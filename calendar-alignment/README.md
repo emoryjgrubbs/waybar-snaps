@@ -6,4 +6,5 @@ I recommend saving a copy of your original clock.cpp file, although you can perf
 
 # Changes
 getCalendarLine: chaged the number of spaces to align the days of the week to the days in the month.
+
 get_calendar: changed the number of spaces to align month/year header and the line outputs of days of the week.
