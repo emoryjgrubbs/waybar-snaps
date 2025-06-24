@@ -1,5 +1,6 @@
 #include "modules/clock.hpp"
 
+#include <glib.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
@@ -16,6 +17,7 @@
 #include <clocale>
 #endif
 
+using namespace date;
 namespace fmt_lib = waybar::util::date::format;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
@@ -25,6 +27,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       m_tooltip_{new Gtk::Label()},
       cldInTooltip_{m_tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
       cldYearShift_{January / 1 / 1900},
+      cldMonShift_{year(1900) / January},
       tzInTooltip_{m_tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
       tzCurrIdx_{0},
       ordInTooltip_{m_tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
@@ -349,9 +352,9 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                           m_locale_, fmtMap_[4],
                           fmt_lib::make_format_args(
                               (line == 2)
-                                  ? static_cast<const date::zoned_seconds&&>(
+                                  ? static_cast<const zoned_seconds&&>(
                                         zoned_seconds{tz, local_days{ymTmp / 1}})
-                                  : static_cast<const date::zoned_seconds&&>(zoned_seconds{
+                                  : static_cast<const zoned_seconds&&>(zoned_seconds{
                                         tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)}})))
                    << ' ';
               } else
@@ -360,10 +363,15 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
           }
 
           if (line == 1 && col > 0 && cldMode_ == CldMode::YEAR) os << std::string(16, ' ');
-          os << Glib::ustring::format((cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right,
-                                      std::setfill(L' '),
-                                      std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ : 0)),
-                                      getCalendarLine(today, ymTmp, line, firstdow, &m_locale_));
+
+
+          // Count wide characters to avoid extra padding
+          size_t wideCharCount = 0;
+          std::string calendarLine = getCalendarLine(today, ymTmp, line, firstdow, &m_locale_);
+          os << Glib::ustring::format(
+              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right, std::setfill(L' '),
+              std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ - wideCharCount : 0)),
+              calendarLine);
 
           // Week numbers on the right
           if (cldWPos_ == WS::RIGHT && line > 0) {
@@ -373,9 +381,9 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                    << fmt_lib::vformat(
                           m_locale_, fmtMap_[4],
                           fmt_lib::make_format_args(
-                              (line == 2) ? static_cast<const date::zoned_seconds&&>(
+                              (line == 2) ? static_cast<const zoned_seconds&&>(
                                                 zoned_seconds{tz, local_days{ymTmp / 1}})
-                                          : static_cast<const date::zoned_seconds&&>(
+                                          : static_cast<const zoned_seconds&&>(
                                                 zoned_seconds{tz, local_days{cldGetWeekForLine(
                                                                       ymTmp, firstdow, line)}})));
               else
